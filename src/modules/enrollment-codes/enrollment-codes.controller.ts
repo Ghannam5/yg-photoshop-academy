@@ -59,6 +59,6 @@ export class EnrollmentCodesController {
   @Post('enrollments/redeem')
   @ApiOperation({ summary: 'Redeem an enrollment code' })
   redeemCode(@CurrentUser() user: AuthenticatedUser, @Body() dto: RedeemCodeDto) {
-    return this.codesService.redeemCode(user.id, dto.code);
+    return this.codesService.redeemCode(user.id, dto.code, dto.courseId);
   }
 }

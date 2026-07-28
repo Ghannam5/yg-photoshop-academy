@@ -128,7 +128,7 @@ export class EnrollmentCodesService {
     return codes;
   }
 
-  async redeemCode(userId: string, codeStr: string) {
+  async redeemCode(userId: string, codeStr: string, targetCourseId?: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
@@ -137,15 +137,21 @@ export class EnrollmentCodesService {
       include: { course: true, invoice: true }
     });
 
-    if (!code) throw new NotFoundException('Invalid enrollment code');
-    if (code.status !== EnrollmentCodeStatus.ACTIVE) throw new BadRequestException(`Code is ${code.status}`);
+    if (!code) throw new NotFoundException('كود التفعيل غير صحيح');
+    if (code.status !== EnrollmentCodeStatus.ACTIVE) {
+      throw new BadRequestException(code.status === EnrollmentCodeStatus.USED ? 'هذا الكود تم استخدامه من قبل' : `الكود غير صالح (${code.status})`);
+    }
     if (code.expiresAt && code.expiresAt < new Date()) {
       await this.prisma.enrollmentCode.update({ where: { id: code.id }, data: { status: EnrollmentCodeStatus.EXPIRED } });
-      throw new BadRequestException('Code has expired');
+      throw new BadRequestException('انتهت صلاحية هذا الكود');
     }
     
     if (code.studentEmail && code.studentEmail.toLowerCase() !== user.email.toLowerCase()) {
-      throw new BadRequestException('Code is restricted to another email address');
+      throw new BadRequestException('هذا الكود مخصص لحساب آخر');
+    }
+
+    if (targetCourseId && code.courseId !== targetCourseId) {
+      throw new BadRequestException('هذا الكود ليس لهذا الكورس');
     }
 
     const enrollment = await this.enrollmentService.enroll(userId, code.courseId, code.id);

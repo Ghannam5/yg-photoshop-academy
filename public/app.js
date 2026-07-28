@@ -19,6 +19,7 @@ const App = {
     adminStudents: [],
     adminNotes: [],
     watermarkInterval: null,
+    targetCourseId: null,
   },
 
   init() {
@@ -245,10 +246,90 @@ const App = {
   updateAuthModalUI() {
     const isReg = this.state.isRegisterMode;
     document.getElementById('authModalTitle').innerText = isReg ? 'إنشاء حساب طالب جديد' : 'تسجيل الدخول';
-    document.getElementById('authSubmitBtn').innerText = isReg ? 'إنشاء الحساب' : 'دخول';
+    document.getElementById('authSubmitBtn').innerText = isReg ? 'إنشاء الحساب الآن 🚀' : 'تسجيل الدخول 🚀';
     document.getElementById('authRegisterFields').classList.toggle('hidden', !isReg);
+    document.getElementById('forgotPasswordLinkContainer').classList.toggle('hidden', isReg);
     document.getElementById('authToggleText').innerText = isReg ? 'لديك حساب بالفعل؟' : 'ليس لديك حساب؟';
     document.getElementById('authToggleBtn').innerText = isReg ? 'تسجيل الدخول' : 'إنشاء حساب جديد';
+  },
+
+  togglePasswordVisibility(inputId) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    el.type = el.type === 'password' ? 'text' : 'password';
+  },
+
+
+
+  openForgotPasswordModal() {
+    this.closeModal('authModal');
+    document.getElementById('forgotPasswordStep1').classList.remove('hidden');
+    document.getElementById('forgotPasswordStep2').classList.add('hidden');
+    document.getElementById('forgotPasswordModal').classList.remove('hidden');
+    document.getElementById('forgotEmailInput').focus();
+  },
+
+  async handleForgotPasswordSubmit() {
+    const email = document.getElementById('forgotEmailInput').value.trim();
+    if (!email) {
+      this.showToast('يرجى كتابة البريد الإلكتروني المسجل', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        this.showToast('📧 تم إرسال رابط/كود استعادة كلمة المرور إلى بريدك الإلكتروني بنجاح!', 'success');
+        document.getElementById('forgotPasswordStep1').classList.add('hidden');
+        document.getElementById('forgotPasswordStep2').classList.remove('hidden');
+      } else {
+        const msg = Array.isArray(data.message) ? data.message.join(', ') : data.message;
+        this.showToast(msg || 'البريد غير مسجل لدينا', 'error');
+      }
+    } catch (err) {
+      this.showToast('خطأ في الاتصال بالخدمة', 'error');
+    }
+  },
+
+  async handleResetPasswordSubmit() {
+    const token = document.getElementById('resetTokenInput').value.trim();
+    const newPassword = document.getElementById('resetNewPasswordInput').value.trim();
+
+    if (!token || !newPassword) {
+      this.showToast('يرجى إدخال رمز الاستعادة وكلمة المرور الجديدة', 'error');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      this.showToast('كلمة المرور الجديدة يجب أن لا تقل عن 8 أحرف', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        this.showToast('🎉 تم تحديث كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول.', 'success');
+        this.closeModal('forgotPasswordModal');
+        this.openAuthModal('login');
+      } else {
+        const msg = Array.isArray(data.message) ? data.message.join(', ') : data.message;
+        this.showToast(msg || 'رمز الاستعادة غير صحيح أو منتهي الصلاحية', 'error');
+      }
+    } catch (err) {
+      this.showToast('خطأ في الاتصال بالسيرفر', 'error');
+    }
   },
 
   async handleAuthSubmit() {
@@ -262,9 +343,13 @@ const App = {
 
     if (this.state.isRegisterMode) {
       const firstName = document.getElementById('authFirstName').value.trim();
-      const lastName = document.getElementById('authLastName').value.trim();
+      const lastName = document.getElementById('authLastName').value.trim() || '';
       if (!firstName) {
         this.showToast('يرجى إدخال الاسم الأول', 'error');
+        return;
+      }
+      if (password.length < 8) {
+        this.showToast('كلمة المرور يجب أن لا تقل عن 8 أحرف', 'error');
         return;
       }
       try {
@@ -274,12 +359,19 @@ const App = {
           body: JSON.stringify({ email, password, firstName, lastName }),
         });
         const data = await res.json();
-        if (res.ok) {
-          this.showToast('تم إنشاء الحساب بنجاح! جاري تسجيل الدخول...', 'success');
-          await this.loginUser(email, password);
+        if (res.ok && data.data) {
+          if (data.data.accessToken) {
+            this.state.token = data.data.accessToken;
+            localStorage.setItem('yg_token', this.state.token);
+            this.state.currentUser = data.data.user;
+            await this.loadMyEnrollments();
+            this.updateUserNav();
+          }
+          this.showToast('تم إنشاء الحساب وتسجيل الدخول بنجاح! 🎉', 'success');
           this.closeModal('authModal');
         } else {
-          this.showToast(data.message || 'فشل إنشاء الحساب', 'error');
+          const msg = Array.isArray(data.message) ? data.message.join(', ') : data.message;
+          this.showToast(msg || 'فشل إنشاء الحساب (تأكد من صحة البيانات)', 'error');
         }
       } catch (err) {
         this.showToast('خطأ في الاتصال بالسيرفر', 'error');
@@ -493,6 +585,20 @@ const App = {
       this.openAuthModal('login');
       return;
     }
+    this.state.targetCourseId = courseId;
+
+    const courseTitleEl = document.getElementById('redeemTargetCourseTitle');
+    if (courseTitleEl) {
+      if (courseId) {
+        const found = this.state.courses.find(c => c.id === courseId);
+        courseTitleEl.innerText = found ? `🎯 الكورس المستهدف: ${found.title}` : '';
+        courseTitleEl.classList.remove('hidden');
+      } else {
+        courseTitleEl.innerText = '';
+        courseTitleEl.classList.add('hidden');
+      }
+    }
+
     document.getElementById('redeemModal').classList.remove('hidden');
     document.getElementById('redeemCodeInput').focus();
   },
@@ -504,6 +610,11 @@ const App = {
       return;
     }
 
+    const payload = { code };
+    if (this.state.targetCourseId) {
+      payload.courseId = this.state.targetCourseId;
+    }
+
     try {
       const res = await fetch(`${API_BASE}/enrollments/redeem`, {
         method: 'POST',
@@ -511,7 +622,7 @@ const App = {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.state.token}`,
         },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
 
@@ -519,6 +630,7 @@ const App = {
         this.showToast('🎉 مبروك! تم تفعيل كودك الحصري بنجاح وفتح الكورس دائماً في حسابك.', 'success');
         this.closeModal('redeemModal');
         document.getElementById('redeemCodeInput').value = '';
+        this.state.targetCourseId = null;
         await this.loadMyEnrollments();
         this.showPage('dashboard');
       } else {
@@ -1337,11 +1449,13 @@ const App = {
     const container = document.getElementById('toastContainer');
     if (!container) return;
 
+    const msgText = Array.isArray(message) ? message.join(', ') : message;
+
     const toast = document.createElement('div');
     toast.className = `toast ${type === 'error' ? 'border-red-500 text-red-300' : 'border-[#08CB00]'}`;
     toast.innerHTML = `
       <span>${type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️'}</span>
-      <span>${message}</span>
+      <span>${msgText}</span>
     `;
 
     container.appendChild(toast);

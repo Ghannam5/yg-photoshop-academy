@@ -10,7 +10,6 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser, Public } from './decorators';
 import type { AuthenticatedUser } from './interfaces/authenticated-user.interface';
-
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
