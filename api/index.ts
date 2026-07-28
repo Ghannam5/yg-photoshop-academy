@@ -1,10 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ExpressAdapter, NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
+import { existsSync } from 'fs';
 import { join } from 'path';
 import express from 'express';
 import { AppModule } from '../src/app.module';
@@ -25,7 +25,11 @@ async function bootstrapServer() {
 
     const logger = app.get(LoggerService);
 
-    app.useStaticAssets(join(process.cwd(), 'public'));
+    const publicPath = join(process.cwd(), 'public');
+    if (existsSync(publicPath)) {
+      app.useStaticAssets(publicPath);
+    }
+
     app.useLogger(logger);
     app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
     app.use(compression());
