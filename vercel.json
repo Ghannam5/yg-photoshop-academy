@@ -4,6 +4,22 @@
     {
       "source": "/api/(.*)",
       "destination": "/api/index.ts"
+    },
+    {
+      "source": "/style.css",
+      "destination": "/public/style.css"
+    },
+    {
+      "source": "/app.js",
+      "destination": "/public/app.js"
+    },
+    {
+      "source": "/images/(.*)",
+      "destination": "/public/images/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/public/index.html"
     }
   ]
 }
