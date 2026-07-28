@@ -1,14 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
-import { ExpressAdapter, NestExpressApplication } from '@nestjs/platform-express';
-import helmet from 'helmet';
-import compression from 'compression';
-import cookieParser from 'cookie-parser';
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { ExpressAdapter } from '@nestjs/platform-express';
 import express from 'express';
 import { AppModule } from '../src/app.module';
-import { LoggerService } from '../src/common/logger/logger.service';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 
@@ -17,25 +11,11 @@ let isInitialized = false;
 
 async function bootstrapServer() {
   if (!isInitialized) {
-    const app = await NestFactory.create<NestExpressApplication>(
+    const app = await NestFactory.create(
       AppModule,
       new ExpressAdapter(server),
-      { bufferLogs: true }
+      { logger: ['error', 'warn', 'log'] }
     );
-
-    const logger = app.get(LoggerService);
-
-    const publicPath = join(process.cwd(), 'public');
-    if (existsSync(publicPath)) {
-      app.useStaticAssets(publicPath);
-    }
-
-    app.useLogger(logger);
-    app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-    app.use(compression());
-    app.use(cookieParser());
-    app.use(express.json({ limit: '50mb' }));
-    app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
     app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
     app.enableCors({ origin: '*', credentials: true });
@@ -67,6 +47,7 @@ export default async function handler(req: any, res: any) {
       statusCode: 500,
       message: 'Serverless initialization error',
       error: err.message || String(err),
+      stack: err.stack,
     });
   }
 }
