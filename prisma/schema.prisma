@@ -1,0 +1,1031 @@
+// prisma/schema.prisma
+// YG Photoshop Academy - Production Database Schema
+// PostgreSQL + Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  STUDENT
+  ADMIN
+  INSTRUCTOR
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum LessonStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum LessonProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  ALL_LEVELS
+}
+
+enum ManualPaymentMethod {
+  INSTAPAY
+  VODAFONE_CASH
+  BANK_TRANSFER
+  CASH
+  FREE
+}
+
+enum EnrollmentCodeStatus {
+  ACTIVE
+  USED
+  EXPIRED
+  REVOKED
+}
+
+enum FileType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  ARCHIVE
+  OTHER
+}
+
+enum CertificateStatus {
+  ISSUED
+  REVOKED
+}
+
+enum SupportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ContactStatus {
+  NEW
+  READ
+  REPLIED
+  ARCHIVED
+}
+
+enum AddressType {
+  BILLING
+  SHIPPING
+}
+
+enum DeviceType {
+  DESKTOP
+  MOBILE
+  TABLET
+  OTHER
+}
+
+enum SettingType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+}
+
+enum AnnouncementType {
+  INFO
+  WARNING
+  SUCCESS
+  CRITICAL
+}
+
+enum AnnouncementAudience {
+  ALL
+  STUDENTS
+  INSTRUCTORS
+  ADMINS
+}
+
+enum UploadPurpose {
+  AVATAR
+  COURSE_THUMBNAIL
+  LESSON_VIDEO
+  LESSON_ATTACHMENT
+  CERTIFICATE_TEMPLATE
+  SIGNATURE
+  BANNER
+  SUPPORT_ATTACHMENT
+  RESOURCE
+  THUMBNAIL
+  GENERAL
+  OTHER
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  PASSWORD_CHANGE
+  ENROLLMENT
+  CODE_GENERATE
+  CODE_REDEEM
+  CODE_REVOKE
+}
+
+enum ActivityType {
+  LESSON_COMPLETE
+  LESSON_VIEW
+  COURSE_ENROLL
+  QUIZ_PASS
+  CERTIFICATE_EARNED
+  REVIEW_SUBMIT
+  PROFILE_UPDATE
+}
+
+enum BannerPosition {
+  HOME_TOP
+  HOME_MIDDLE
+  COURSE_CATALOG
+  DASHBOARD
+}
+
+// ============================================================================
+// MODELS - Users & Authentication
+// ============================================================================
+
+model User {
+  id              String     @id @default(uuid())
+  email           String     @unique
+  password        String
+  firstName       String
+  lastName        String
+  role            UserRole   @default(STUDENT)
+  roleId          String?
+  status          UserStatus @default(PENDING_VERIFICATION)
+  emailVerified   Boolean    @default(false)
+  emailVerifiedAt DateTime?
+  avatarUrl       String?
+  bio             String?
+  lastLoginAt     DateTime?
+  lastLoginIp     String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  roleRef         Role?               @relation("UserRole", fields: [roleId], references: [id], onDelete: SetNull)
+  profile         UserProfile?
+  addresses       Address[]
+  sessions        UserSession[]
+  refreshTokens   RefreshToken[]
+  devices         UserDevice[]
+  enrollments     StudentEnrollment[]
+  reviews         Review[]
+  bookmarks       Bookmark[]
+  notes           LessonNote[]
+  certificates    Certificate[]
+  auditLogs       AuditLog[]
+  activityLogs    ActivityLog[]
+  supportTickets  SupportTicket[]
+  supportReplies  SupportReply[]
+  contactMessages ContactMessage[]
+  uploads         Upload[]
+  taughtCourses   CourseInstructor[]
+  createdCodes    EnrollmentCode[]    @relation("CreatedCodes")
+  usedCodes       EnrollmentCode[]    @relation("UsedCodes")
+
+  @@index([email])
+  @@index([role])
+  @@index([roleId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model UserProfile {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  phone       String?
+  phoneNumber String?
+  dateOfBirth DateTime?
+  gender      String?
+  headline    String?
+  website     String?
+  github      String?
+  linkedin    String?
+  twitter     String?
+  youtube     String?
+  country     String?
+  city        String?
+  timezone    String?   @default("UTC")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]           @relation("UserRole")
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  module      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roles RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model UserSession {
+  id           String      @id @default(uuid())
+  userId       String
+  token        String      @unique
+  ipAddress    String?
+  userAgent    String?
+  deviceType   DeviceType? @default(DESKTOP)
+  isValid      Boolean     @default(true)
+  expiresAt    DateTime
+  createdAt    DateTime    @default(now())
+  lastActiveAt DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([isValid])
+  @@map("user_sessions")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  isRevoked Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model UserDevice {
+  id         String     @id @default(uuid())
+  userId     String
+  deviceType DeviceType
+  deviceName String?
+  deviceOs   String?
+  browser    String?
+  ipAddress  String?
+  lastUsedAt DateTime   @default(now())
+  createdAt  DateTime   @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_devices")
+}
+
+model Address {
+  id         String      @id @default(uuid())
+  userId     String
+  type       AddressType @default(BILLING)
+  street     String
+  city       String
+  state      String?
+  postalCode String?
+  country    String
+  isDefault  Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+// ============================================================================
+// MODELS - Courses & Curriculum
+// ============================================================================
+
+model Course {
+  id              String       @id @default(uuid())
+  title           String
+  slug            String       @unique
+  subtitle        String?
+  description     String
+  thumbnailUrl    String?
+  previewVideoUrl String?
+  price           Float
+  compareAtPrice  Float?
+  currency        String       @default("EGP")
+  status          CourseStatus @default(DRAFT)
+  level           CourseLevel  @default(ALL_LEVELS)
+  language        String       @default("ar")
+  totalDuration   String?
+  totalLessons    Int          @default(0)
+  totalModules    Int          @default(0)
+  publishedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+
+  categories      CourseCategoryAssignment[]
+  instructors     CourseInstructor[]
+  modules         CourseModule[]
+  reviews         Review[]
+  enrollments     StudentEnrollment[]
+  certificates    CertificateTemplate[]
+  enrollmentCodes EnrollmentCode[]
+  Bookmark        Bookmark[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([price])
+  @@index([level])
+  @@index([deletedAt])
+  @@map("courses")
+}
+
+model CourseCategory {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  icon      String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  courses CourseCategoryAssignment[]
+
+  @@map("course_categories")
+}
+
+model CourseCategoryAssignment {
+  id         String   @id @default(uuid())
+  courseId   String
+  categoryId String
+  createdAt  DateTime @default(now())
+
+  course   Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  category CourseCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, categoryId])
+  @@map("course_category_assignments")
+}
+
+model CourseInstructor {
+  id        String   @id @default(uuid())
+  courseId  String
+  userId    String
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+  @@map("course_instructors")
+}
+
+model CourseModule {
+  id          String    @id @default(uuid())
+  courseId    String
+  title       String
+  description String?
+  order       Int       @default(0)
+  isPublished Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@index([courseId])
+  @@index([order])
+  @@map("course_modules")
+}
+
+model Lesson {
+  id            String       @id @default(uuid())
+  moduleId      String
+  title         String
+  slug          String
+  description   String?
+  order         Int          @default(0)
+  duration      Int          @default(0)
+  videoDuration Int          @default(0)
+  isFree        Boolean      @default(false)
+  status        LessonStatus @default(PUBLISHED)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deletedAt     DateTime?
+
+  module       CourseModule       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  video        LessonVideo?
+  resources    LessonResource[]
+  attachments  LessonAttachment[]
+  notes        LessonNote[]
+  progresses   LessonProgress[]
+  watchHistory WatchHistory[]
+  Bookmark     Bookmark[]
+
+  @@unique([moduleId, slug])
+  @@index([moduleId])
+  @@index([order])
+  @@map("lessons")
+}
+
+model LessonVideo {
+  id           String   @id @default(uuid())
+  lessonId     String   @unique
+  videoUrl     String
+  provider     String   @default("CLOUDFLARE_STREAM")
+  duration     Int      @default(0)
+  resolution   String?
+  thumbnailUrl String?
+  hlsUrl       String?
+  dashUrl      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("lesson_videos")
+}
+
+model LessonResource {
+  id        String   @id @default(uuid())
+  lessonId  String
+  title     String
+  url       String
+  type      String   @default("LINK")
+  createdAt DateTime @default(now())
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@map("lesson_resources")
+}
+
+model LessonAttachment {
+  id        String   @id @default(uuid())
+  lessonId  String
+  name      String
+  fileUrl   String
+  fileSize  Int
+  fileType  FileType @default(DOCUMENT)
+  createdAt DateTime @default(now())
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@map("lesson_attachments")
+}
+
+model LessonNote {
+  id        String   @id @default(uuid())
+  userId    String
+  lessonId  String
+  content   String
+  timestamp Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([lessonId])
+  @@map("lesson_notes")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  courseId  String
+  rating    Int
+  comment   String?
+  isPublic  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@index([rating])
+  @@map("reviews")
+}
+
+// ============================================================================
+// MODELS - Enrollment, Progress & Certificates
+// ============================================================================
+
+model StudentEnrollment {
+  id               String           @id @default(uuid())
+  userId           String
+  courseId         String
+  enrollmentCodeId String?
+  status           EnrollmentStatus @default(ACTIVE)
+  enrolledAt       DateTime         @default(now())
+  completedAt      DateTime?
+  expiresAt        DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course         Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  enrollmentCode EnrollmentCode?  @relation(fields: [enrollmentCodeId], references: [id], onDelete: SetNull)
+  progress       StudentProgress?
+  Certificate    Certificate?
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@index([status])
+  @@map("student_enrollments")
+}
+
+model StudentProgress {
+  id                  String    @id @default(uuid())
+  enrollmentId        String    @unique
+  completedLessons    Int       @default(0)
+  totalLessons        Int       @default(0)
+  percentage          Float     @default(0.0)
+  lastWatchedLessonId String?
+  lastLessonId        String?
+  totalTimeWatched    Int       @default(0)
+  completedAt         DateTime?
+  lastWatchedAt       DateTime?
+  updatedAt           DateTime  @updatedAt
+
+  enrollment     StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lessonProgress LessonProgress[]
+
+  @@map("student_progresses")
+}
+
+model LessonProgress {
+  id             String               @id @default(uuid())
+  progressId     String
+  lessonId       String
+  status         LessonProgressStatus @default(NOT_STARTED)
+  watchedSeconds Int                  @default(0)
+  totalSeconds   Int                  @default(0)
+  percentage     Int                  @default(0)
+  lastWatchedAt  DateTime?
+  completedAt    DateTime?
+  updatedAt      DateTime             @updatedAt
+
+  progress StudentProgress @relation(fields: [progressId], references: [id], onDelete: Cascade)
+  lesson   Lesson          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([progressId, lessonId])
+  @@index([progressId])
+  @@index([lessonId])
+  @@map("lesson_progresses")
+}
+
+model WatchHistory {
+  id           String   @id @default(uuid())
+  progressId   String
+  lessonId     String
+  lastPosition Int      @default(0)
+  durationSec  Int      @default(0)
+  watchedAt    DateTime @default(now())
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([progressId])
+  @@index([lessonId])
+  @@map("watch_histories")
+}
+
+model Bookmark {
+  id        String   @id @default(uuid())
+  userId    String
+  courseId  String
+  lessonId  String?
+  createdAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([lessonId])
+  @@map("bookmarks")
+}
+
+model Certificate {
+  id                String            @id @default(uuid())
+  certificateNumber String            @unique
+  verificationCode  String?           @unique
+  enrollmentId      String?           @unique
+  userId            String
+  templateId        String
+  pdfUrl            String?
+  qrCodeUrl         String?
+  status            CertificateStatus @default(ISSUED)
+  revokedAt         DateTime?
+  issuedAt          DateTime          @default(now())
+
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template   CertificateTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  enrollment StudentEnrollment?  @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([certificateNumber])
+  @@map("certificates")
+}
+
+model CertificateTemplate {
+  id           String   @id @default(uuid())
+  courseId     String   @unique
+  name         String
+  description  String?
+  templateUrl  String
+  signatureUrl String?
+  prefix       String   @default("YG")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  course       Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  certificates Certificate[]
+
+  @@map("certificate_templates")
+}
+
+// ============================================================================
+// MODELS - Enrollment Codes & Invoices
+// ============================================================================
+
+model EnrollmentCode {
+  id               String               @id @default(uuid())
+  code             String               @unique
+  courseId         String
+  createdById      String
+  studentEmail     String?
+  studentName      String?
+  paymentMethod    ManualPaymentMethod  @default(INSTAPAY)
+  paymentReference String?
+  amount           Float                @default(0)
+  currency         String               @default("EGP")
+  status           EnrollmentCodeStatus @default(ACTIVE)
+  usedById         String?
+  usedAt           DateTime?
+  expiresAt        DateTime?
+  note             String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  course      Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdBy   User                @relation("CreatedCodes", fields: [createdById], references: [id])
+  usedBy      User?               @relation("UsedCodes", fields: [usedById], references: [id])
+  enrollments StudentEnrollment[]
+  invoice     Invoice?
+
+  @@index([code])
+  @@index([courseId])
+  @@index([status])
+  @@index([studentEmail])
+  @@index([createdById])
+  @@map("enrollment_codes")
+}
+
+model Invoice {
+  id               String              @id @default(uuid())
+  invoiceNumber    String              @unique
+  enrollmentCodeId String              @unique
+  studentName      String
+  studentEmail     String
+  courseName       String
+  amount           Float
+  currency         String              @default("EGP")
+  paymentMethod    ManualPaymentMethod
+  paymentReference String?
+  pdfUrl           String?
+  issuedAt         DateTime            @default(now())
+  createdAt        DateTime            @default(now())
+
+  enrollmentCode EnrollmentCode @relation(fields: [enrollmentCodeId], references: [id], onDelete: Cascade)
+
+  @@index([studentEmail])
+  @@index([issuedAt])
+  @@map("invoices")
+}
+
+// ============================================================================
+// MODELS - Media & Uploads
+// ============================================================================
+
+model MediaFile {
+  id        String   @id @default(uuid())
+  filename  String
+  url       String
+  mimeType  String
+  size      Int
+  createdAt DateTime @default(now())
+
+  @@map("media_files")
+}
+
+model Upload {
+  id        String        @id @default(uuid())
+  userId    String
+  purpose   UploadPurpose @default(GENERAL)
+  filename  String
+  fileUrl   String
+  fileSize  Int
+  mimeType  String
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("uploads")
+}
+
+// ============================================================================
+// MODELS - CMS & Content Management
+// ============================================================================
+
+model Banner {
+  id        String         @id @default(uuid())
+  title     String
+  imageUrl  String
+  linkUrl   String?
+  position  BannerPosition @default(HOME_TOP)
+  isActive  Boolean        @default(true)
+  order     Int            @default(0)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@map("banners")
+}
+
+model Announcement {
+  id        String               @id @default(uuid())
+  title     String
+  content   String
+  type      AnnouncementType     @default(INFO)
+  audience  AnnouncementAudience @default(ALL)
+  isActive  Boolean              @default(true)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@map("announcements")
+}
+
+model FAQ {
+  id        String    @id @default(uuid())
+  question  String
+  answer    String
+  category  String    @default("general")
+  order     Int       @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([category])
+  @@index([isActive])
+  @@index([order])
+  @@map("faqs")
+}
+
+model Testimonial {
+  id         String   @id @default(uuid())
+  name       String
+  role       String?
+  avatarUrl  String?
+  content    String
+  rating     Int      @default(5)
+  isFeatured Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@map("testimonials")
+}
+
+// ============================================================================
+// MODELS - Support & Contact
+// ============================================================================
+
+model ContactMessage {
+  id        String        @id @default(uuid())
+  userId    String?
+  name      String
+  email     String
+  subject   String
+  message   String
+  status    ContactStatus @default(NEW)
+  createdAt DateTime      @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([status])
+  @@map("contact_messages")
+}
+
+model SupportTicket {
+  id           String         @id @default(uuid())
+  ticketNumber String         @unique
+  userId       String
+  subject      String
+  category     String
+  priority     TicketPriority @default(MEDIUM)
+  status       SupportStatus  @default(OPEN)
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies SupportReply[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("support_tickets")
+}
+
+model SupportReply {
+  id         String   @id @default(uuid())
+  ticketId   String
+  userId     String
+  message    String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("support_replies")
+}
+
+// ============================================================================
+// MODELS - Audit, Activity & Settings
+// ============================================================================
+
+model AuditLog {
+  id        String      @id @default(uuid())
+  userId    String?
+  action    AuditAction
+  entity    String
+  entityId  String?
+  details   Json?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime    @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+model ActivityLog {
+  id          String       @id @default(uuid())
+  userId      String
+  type        ActivityType
+  title       String?
+  description String?
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@map("activity_logs")
+}
+
+model WebsiteSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  group       String   @default("general")
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([group])
+  @@map("website_settings")
+}
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  type        String   @default("string")
+  group       String   @default("general")
+  description String?
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([group])
+  @@index([type])
+  @@map("system_settings")
+}
+
+model EmailTemplate {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  subject     String
+  htmlContent String
+  textContent String
+  variables   String[]
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("email_templates")
+}

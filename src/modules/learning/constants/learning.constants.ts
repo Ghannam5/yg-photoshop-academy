@@ -1,0 +1,20 @@
+export const LEARNING = {
+  DEFAULT_PAGE: 1,
+  DEFAULTPAGESIZE: 20,
+  MAXPAGESIZE: 100,
+
+  COMPLETION_THRESHOLD: 0.9,
+
+  CERTIFICATENUMBERLENGTH: 12,
+  VERIFICATIONCODELENGTH: 16,
+  CERTIFICATE_ALPHABET: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
+} as const;
+
+export const LEARNING_ROUTES = {
+  COURSES: 'courses',
+  ENROLLMENTS: 'enrollments',
+  PROGRESS: 'progress',
+  BOOKMARKS: 'bookmarks',
+  NOTES: 'notes',
+  CERTIFICATES: 'certificates',
+} as const;
