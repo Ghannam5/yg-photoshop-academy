@@ -49,7 +49,7 @@ async function bootstrapServer() {
       })
     );
 
-    app.useGlobalFilters(new HttpExceptionFilter(logger));
+    app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new TransformInterceptor());
 
     await app.init();
