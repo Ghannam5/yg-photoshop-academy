@@ -58,6 +58,15 @@ async function bootstrapServer() {
 }
 
 export default async function handler(req: any, res: any) {
-  await bootstrapServer();
-  server(req, res);
+  try {
+    await bootstrapServer();
+    server(req, res);
+  } catch (err: any) {
+    console.error('Serverless Bootstrap Error:', err);
+    res.status(500).json({
+      statusCode: 500,
+      message: 'Serverless initialization error',
+      error: err.message || String(err),
+    });
+  }
 }
