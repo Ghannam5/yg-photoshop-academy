@@ -350,6 +350,19 @@ const App = {
     }
   },
 
+  setButtonLoading(btnId, isLoading, loadingText = 'جاري التحقق...') {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    if (isLoading) {
+      btn.dataset.originalText = btn.innerText;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="inline-block w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin ml-2"></span> ${loadingText}`;
+    } else {
+      btn.disabled = false;
+      btn.innerText = btn.dataset.originalText || 'تسجيل الدخول 🚀';
+    }
+  },
+
   async handleAuthSubmit() {
     const email = document.getElementById('authEmail').value.trim();
     const password = document.getElementById('authPassword').value.trim();
@@ -370,6 +383,8 @@ const App = {
         this.showToast('كلمة المرور يجب أن لا تقل عن 8 أحرف', 'error');
         return;
       }
+
+      this.setButtonLoading('authSubmitBtn', true, 'جاري إنشاء الحساب...');
       try {
         const res = await fetch(`${API_BASE}/auth/register`, {
           method: 'POST',
@@ -396,6 +411,8 @@ const App = {
       } catch (err) {
         console.error(err);
         this.showToast('خطأ في الاتصال بالسيرفر', 'error');
+      } finally {
+        this.setButtonLoading('authSubmitBtn', false);
       }
     } else {
       await this.loginUser(email, password);
@@ -403,6 +420,7 @@ const App = {
   },
 
   async loginUser(email, password) {
+    this.setButtonLoading('authSubmitBtn', true, 'جاري تسجيل الدخول...');
     try {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
@@ -427,6 +445,8 @@ const App = {
     } catch (err) {
       console.error(err);
       this.showToast('خطأ في شبكة الاتصال بالسيرفر', 'error');
+    } finally {
+      this.setButtonLoading('authSubmitBtn', false);
     }
   },
 
