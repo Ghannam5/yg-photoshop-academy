@@ -5,7 +5,8 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import * as compression from 'compression';
-import cookieParser from 'cookie-parser';
+import * as cookieParserImport from 'cookie-parser';
+const cookieParserFn = (cookieParserImport as any).default || cookieParserImport;
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -41,7 +42,7 @@ async function bootstrap() {
   app.useLogger(logger);
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(compression());
-  app.use(cookieParser());
+  app.use(cookieParserFn());
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
