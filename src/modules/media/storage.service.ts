@@ -4,6 +4,7 @@ import { UploadPurpose } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { extname, join } from 'path';
+import { tmpdir } from 'os';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface UploadInput {
@@ -31,7 +32,8 @@ export class StorageService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.uploadDir = this.config.get('UPLOAD_DIR') ?? join(process.cwd(), 'uploads');
+    const defaultDir = process.env.VERCEL ? join(tmpdir(), 'uploads') : join(process.cwd(), 'uploads');
+    this.uploadDir = this.config.get('UPLOAD_DIR') ?? defaultDir;
     this.baseUrl = (
       this.config.get('API_URL') ??
       this.config.get('FRONTEND_URL') ??
@@ -40,9 +42,13 @@ export class StorageService implements OnModuleInit {
   }
 
   onModuleInit(): void {
-    if (!existsSync(this.uploadDir)) {
-      mkdirSync(this.uploadDir, { recursive: true });
-      this.logger.log(`Created upload directory: ${this.uploadDir}`);
+    try {
+      if (!existsSync(this.uploadDir)) {
+        mkdirSync(this.uploadDir, { recursive: true });
+        this.logger.log(`Created upload directory: ${this.uploadDir}`);
+      }
+    } catch (error) {
+      this.logger.warn(`Could not create upload directory ${this.uploadDir}: ${(error as Error).message}`);
     }
   }
 

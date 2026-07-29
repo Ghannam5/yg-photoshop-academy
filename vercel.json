@@ -1,5 +1,10 @@
 {
   "buildCommand": "npx prisma generate && npx nest build",
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "node_modules/.prisma/client/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",

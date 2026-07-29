@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
@@ -6,7 +7,8 @@ import { AppModule } from '../src/app.module';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 
-const server = express();
+const expressApp: any = express || require('express');
+const server = typeof expressApp === 'function' ? expressApp() : (expressApp.default || expressApp)();
 let isInitialized = false;
 
 async function bootstrapServer() {

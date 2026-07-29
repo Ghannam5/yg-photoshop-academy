@@ -8,6 +8,7 @@ import * as compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import * as express from 'express';
 import { AppModule } from './app.module';
 import { LoggerService } from './common/logger/logger.service';
@@ -25,11 +26,16 @@ async function bootstrap() {
   const logger = app.get(LoggerService);
   const port = configService.get('PORT', 3001);
 
-  const uploadDir = configService.get('UPLOAD_DIR') ?? join(process.cwd(), 'uploads');
-  if (!existsSync(uploadDir)) {
-    mkdirSync(uploadDir, { recursive: true });
+  const defaultUploadDir = process.env.VERCEL ? join(tmpdir(), 'uploads') : join(process.cwd(), 'uploads');
+  const uploadDir = configService.get('UPLOAD_DIR') ?? defaultUploadDir;
+  try {
+    if (!existsSync(uploadDir)) {
+      mkdirSync(uploadDir, { recursive: true });
+    }
+    app.useStaticAssets(uploadDir, { prefix: '/uploads/' });
+  } catch (err) {
+    logger.warn(`Skipped creating/mounting static uploads directory: ${(err as Error).message}`);
   }
-  app.useStaticAssets(uploadDir, { prefix: '/uploads/' });
   app.useStaticAssets(join(process.cwd(), 'public'));
 
   app.useLogger(logger);
