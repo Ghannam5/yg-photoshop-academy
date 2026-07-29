@@ -391,7 +391,11 @@ const App = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password, firstName, lastName }),
         });
-        const resData = await res.json();
+        
+        let resData;
+        try { resData = await res.json(); } catch(e) { resData = {}; }
+        console.log('Register Response:', res.status, resData);
+
         const payload = resData.data || resData;
 
         if (res.ok && payload && (payload.accessToken || payload.user)) {
@@ -406,11 +410,11 @@ const App = {
           this.closeModal('authModal');
         } else {
           const msg = Array.isArray(resData.message) ? resData.message.join(', ') : (resData.message || (payload && payload.message));
-          this.showToast(msg || 'فشل إنشاء الحساب (تأكد من صحة البريد والبيانات)', 'error');
+          this.showToast(msg || `فشل إنشاء الحساب (رمز ${res.status})`, 'error');
         }
       } catch (err) {
-        console.error(err);
-        this.showToast('خطأ في الاتصال بالسيرفر', 'error');
+        console.error('Register fetch error:', err);
+        this.showToast('خطأ في شبكة الاتصال بالسيرفر', 'error');
       } finally {
         this.setButtonLoading('authSubmitBtn', false);
       }
@@ -427,7 +431,11 @@ const App = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const resData = await res.json();
+      
+      let resData;
+      try { resData = await res.json(); } catch(e) { resData = {}; }
+      console.log('Login Response:', res.status, resData);
+
       const payload = resData.data || resData;
 
       if (res.ok && payload && payload.accessToken) {
@@ -440,10 +448,10 @@ const App = {
         this.closeModal('authModal');
       } else {
         const msg = Array.isArray(resData.message) ? resData.message.join(', ') : (resData.message || (payload && payload.message));
-        this.showToast(msg || 'بيانات الدخول غير صحيحة', 'error');
+        this.showToast(msg || `بيانات الدخول غير صحيحة (رمز ${res.status})`, 'error');
       }
     } catch (err) {
-      console.error(err);
+      console.error('Login fetch error:', err);
       this.showToast('خطأ في شبكة الاتصال بالسيرفر', 'error');
     } finally {
       this.setButtonLoading('authSubmitBtn', false);

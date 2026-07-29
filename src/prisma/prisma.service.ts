@@ -10,10 +10,18 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleInit() {
-    await this.$connect();
+    try {
+      await this.$connect();
+    } catch (err) {
+      console.warn('Prisma initial connection deferred:', (err as Error).message);
+    }
   }
 
   async onModuleDestroy() {
-    await this.$disconnect();
+    try {
+      await this.$disconnect();
+    } catch (err) {
+      // Ignore
+    }
   }
 }
