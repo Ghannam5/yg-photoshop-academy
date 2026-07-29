@@ -19,6 +19,7 @@ async function bootstrapServer() {
       { logger: ['error', 'warn', 'log'] }
     );
 
+    app.setGlobalPrefix('api', { exclude: ['health', 'metrics'] });
     app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
     app.enableCors({ origin: '*', credentials: true });
 
