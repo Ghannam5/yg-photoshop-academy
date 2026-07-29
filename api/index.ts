@@ -19,6 +19,9 @@ async function bootstrapServer() {
       { logger: ['error', 'warn', 'log'] }
     );
 
+    app.use(express.json({ limit: '50mb' }));
+    app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
     app.setGlobalPrefix('api', { exclude: ['health', 'metrics'] });
     app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
     app.enableCors({ origin: '*', credentials: true });
