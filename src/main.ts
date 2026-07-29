@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
-import * as compressionModule from 'compression';
 import * as cookieParserModule from 'cookie-parser';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
@@ -16,16 +15,16 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { RequestIdMiddleware } from './common/middlewares/request-id.middleware';
 
-function safeMiddleware(middlewareModule: any, ...args: any[]) {
+function safeCookieParser() {
   try {
-    const fn = typeof middlewareModule === 'function'
-      ? middlewareModule
-      : (middlewareModule && typeof middlewareModule.default === 'function' ? middlewareModule.default : null);
+    const fn = typeof cookieParserModule === 'function'
+      ? cookieParserModule
+      : (cookieParserModule && typeof (cookieParserModule as any).default === 'function' ? (cookieParserModule as any).default : null);
     if (typeof fn === 'function') {
-      return fn(...args);
+      return fn();
     }
   } catch (e) {
-    console.warn('Middleware initialization skipped:', e);
+    // Ignore
   }
   return (_req: any, _res: any, next: any) => next();
 }
@@ -54,15 +53,14 @@ async function bootstrap() {
 
   app.useLogger(logger);
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-  app.use(safeMiddleware(compressionModule));
-  app.use(safeMiddleware(cookieParserModule));
+  app.use(safeCookieParser());
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 
   app.enableCors({
-    origin: configService.get('CORS_ORIGIN', 'http://localhost:3000'),
+    origin: '*',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
@@ -73,7 +71,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
       transform: true,
       transformOptions: { enableImplicitConversion: true },
-    }),
+    })
   );
 
   app.useGlobalFilters(new HttpExceptionFilter());
@@ -81,14 +79,13 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api', { exclude: ['health', 'metrics'] });
 
-  // Swagger API Documentation
   const swaggerConfig = new DocumentBuilder()
     .setTitle('YG Photoshop Academy API')
     .setDescription('Backend API for YG Photoshop Academy — Online Learning Platform')
     .setVersion('1.0')
     .addBearerAuth(
       { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', description: 'Enter your JWT token' },
-      'JWT-Auth',
+      'JWT-Auth'
     )
     .addTag('Auth', 'Authentication & Registration')
     .addTag('Users', 'User Profile Management')
@@ -98,26 +95,22 @@ async function bootstrap() {
     .addTag('Progress', 'Lesson Progress Tracking')
     .addTag('Reviews', 'Course Reviews & Ratings')
     .addTag('Certificates', 'Certificate Issuance & Verification')
-    .addTag('Admin', 'Admin Dashboard & Management')
-    .addTag('CMS', 'Content Management System')
-    .addTag('Media', 'File Uploads & Video Streaming')
-    .addTag('Support', 'Support Tickets & Helpdesk')
-    .addTag('Analytics', 'Dashboard Analytics & Metrics')
+    .addTag('Support', 'Support Tickets & Replies')
+    .addTag('Analytics', 'Admin Dashboard Analytics')
+    .addTag('Admin', 'Course & Curriculum Administration')
+    .addTag('CMS', 'Content Management & Testimonials')
+    .addTag('RBAC', 'Role-Based Access Control')
     .build();
 
-  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, swaggerDocument, {
-    swaggerOptions: {
-      persistAuthorization: true,
-      docExpansion: 'none',
-      filter: true,
-      tagsSorter: 'alpha',
-    },
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: { persistAuthorization: true },
+    customSiteTitle: 'YG Photoshop Academy — API Docs',
   });
 
   await app.listen(port);
-  logger.log(`Application running on port ${port}`, 'Bootstrap');
-  logger.log(`Swagger docs available at http://localhost:${port}/api/docs`, 'Bootstrap');
+  logger.log(`Application running on port ${port}`);
+  logger.log(`Swagger docs available at http://localhost:${port}/api/docs`);
 }
 
 bootstrap();
