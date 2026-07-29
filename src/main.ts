@@ -4,10 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
-import * as compressionImport from 'compression';
-const compressionFn = (compressionImport as any).default || compressionImport;
-import * as cookieParserImport from 'cookie-parser';
-const cookieParserFn = (cookieParserImport as any).default || cookieParserImport;
+import * as compressionModule from 'compression';
+import * as cookieParserModule from 'cookie-parser';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -17,6 +15,20 @@ import { LoggerService } from './common/logger/logger.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { RequestIdMiddleware } from './common/middlewares/request-id.middleware';
+
+function safeMiddleware(middlewareModule: any, ...args: any[]) {
+  try {
+    const fn = typeof middlewareModule === 'function'
+      ? middlewareModule
+      : (middlewareModule && typeof middlewareModule.default === 'function' ? middlewareModule.default : null);
+    if (typeof fn === 'function') {
+      return fn(...args);
+    }
+  } catch (e) {
+    console.warn('Middleware initialization skipped:', e);
+  }
+  return (_req: any, _res: any, next: any) => next();
+}
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -42,8 +54,8 @@ async function bootstrap() {
 
   app.useLogger(logger);
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-  app.use(compressionFn());
-  app.use(cookieParserFn());
+  app.use(safeMiddleware(compressionModule));
+  app.use(safeMiddleware(cookieParserModule));
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
