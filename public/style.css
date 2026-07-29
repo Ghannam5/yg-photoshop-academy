@@ -220,3 +220,30 @@ body.cursor-hover #cursor-dot { transform: translate(-50%, -50%) scale(2.2); opa
   font-weight: 700;
   font-size: 14px;
 }
+
+/* Responsive Enhancements for Mobile, Tablet & Desktop */
+@media (max-width: 640px) {
+  .toast-container {
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+  }
+  .toast {
+    font-size: 12.5px;
+    padding: 10px 16px;
+  }
+  #cursor-glow, #cursor-dot {
+    display: none !important;
+  }
+  .btn {
+    padding: 11px 18px;
+    font-size: 13.5px;
+  }
+}
+
+/* Touch Device Optimization */
+@media (pointer: coarse) {
+  #cursor-glow, #cursor-dot {
+    display: none !important;
+  }
+}

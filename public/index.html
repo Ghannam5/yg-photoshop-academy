@@ -22,14 +22,14 @@
   <div id="cursor-dot"></div>
 
   <!-- TOP BAR ANNOUNCEMENT WITH VODAFONE CASH / INSTAPAY NUMBER -->
-  <div class="topbar bg-gradient-to-r from-[#253900] via-[#0c5a32] to-[#253900] text-center text-xs py-2 text-green-200 font-bold border-b border-green-500/20 px-4 flex justify-center items-center gap-2">
+  <div class="topbar bg-gradient-to-r from-[#253900] via-[#0c5a32] to-[#253900] text-center text-xs py-2 text-green-200 font-bold border-b border-green-500/20 px-3 flex flex-wrap justify-center items-center gap-1.5 sm:gap-2">
     <span class="inline-block w-2 h-2 rounded-full bg-[#5dff4d] animate-ping"></span>
-    <span>للتحويل وافتتاح الكورس عبر InstaPay أو Vodafone Cash على الرقم: <strong class="text-white font-mono dir-ltr text-sm bg-black/40 px-2 py-0.5 rounded border border-[#08CB00]/40">01062680608</strong></span>
-    <a href="https://wa.me/201062680608" target="_blank" class="text-xs bg-[#08CB00] text-black px-2.5 py-0.5 rounded-full font-black hover:scale-105 transition">واتساب 💬</a>
+    <span class="text-[11px] sm:text-xs">للتحويل وافتتاح الكورس عبر InstaPay أو Vodafone Cash على الرقم: <strong class="text-white font-mono dir-ltr text-xs sm:text-sm bg-black/40 px-2 py-0.5 rounded border border-[#08CB00]/40">01062680608</strong></span>
+    <a href="https://wa.me/201062680608" target="_blank" class="text-[11px] sm:text-xs bg-[#08CB00] text-black px-2.5 py-0.5 rounded-full font-black hover:scale-105 transition">واتساب 💬</a>
   </div>
 
   <!-- NAVBAR WITH WORKING VISITOR SCROLL LINKS & STUDENT TABS -->
-  <header class="nav sticky top-0 z-50 bg-[#070a08]/95 backdrop-blur-xl border-b border-white/10 px-8 py-4">
+  <header class="nav sticky top-0 z-50 bg-[#070a08]/95 backdrop-blur-xl border-b border-white/10 px-4 sm:px-8 py-3.5">
     <div class="max-w-7xl mx-auto flex justify-between items-center">
       
       <!-- BRAND LOGO -->
@@ -38,7 +38,7 @@
         <span class="font-extrabold text-xl text-white tracking-tight">أكاديمي<span class="text-[#08CB00]">.</span></span>
       </div>
 
-      <!-- VISITOR NAVIGATION TABS (PRE-LOGIN ONLY - WORKING SCROLL) -->
+      <!-- VISITOR NAVIGATION TABS (PRE-LOGIN ONLY - DESKTOP) -->
       <nav id="visitorNav" class="hidden lg:flex items-center gap-6 text-sm font-bold text-gray-300">
         <button onclick="App.scrollToSection('topBestSellersSection')" class="hover:text-[#08CB00] transition py-1 text-[#08CB00]">🔥 الأكثر مبيعاً</button>
         <button onclick="App.scrollToSection('features')" class="hover:text-[#08CB00] transition py-1">المميزات</button>
@@ -50,7 +50,7 @@
         <button onclick="App.scrollToSection('contact-youssef')" class="hover:text-[#08CB00] transition py-1 text-emerald-400">التواصل</button>
       </nav>
 
-      <!-- STUDENT NAVIGATION TABS (POST-LOGIN ONLY) -->
+      <!-- STUDENT NAVIGATION TABS (POST-LOGIN ONLY - DESKTOP) -->
       <nav id="studentNav" class="hidden lg:flex items-center gap-8 text-sm font-bold text-gray-300">
         <button onclick="App.showPage('home')" class="hover:text-[#08CB00] transition py-1 flex items-center gap-2">🏠 الرئيسية</button>
         <button onclick="App.showPage('courses')" class="hover:text-[#08CB00] transition py-1 flex items-center gap-2">🎓 الكورسات المتاحة</button>
@@ -59,12 +59,42 @@
         <button id="navAdminBtn" onclick="App.showPage('admin')" class="text-yellow-400 hover:text-yellow-300 transition hidden font-bold py-1">⚡ لوحة الأدمن الشاملة</button>
       </nav>
 
-      <!-- USER AUTH CONTROLS -->
-      <div id="userNavArea" class="flex items-center gap-4">
-        <button onclick="App.openAuthModal('login')" class="btn btn-ghost text-xs py-2 px-5">تسجيل الدخول</button>
-        <button onclick="App.openAuthModal('register')" class="btn btn-primary text-xs py-2 px-6">حساب جديد ✨</button>
+      <!-- USER AUTH CONTROLS & MOBILE HAMBURGER MENU BUTTON -->
+      <div class="flex items-center gap-2 sm:gap-4">
+        <div id="userNavArea" class="flex items-center gap-2 sm:gap-4">
+          <button onclick="App.openAuthModal('login')" class="btn btn-ghost text-xs py-2 px-3 sm:px-5">تسجيل الدخول</button>
+          <button onclick="App.openAuthModal('register')" class="btn btn-primary text-xs py-2 px-4 sm:px-6">حساب جديد ✨</button>
+        </div>
+
+        <button id="mobileMenuToggleBtn" onclick="App.toggleMobileMenu()" class="lg:hidden p-2 rounded-xl bg-white/5 border border-white/10 text-white hover:text-[#08CB00] transition flex items-center justify-center" aria-label="القائمة">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
       </div>
 
+    </div>
+
+    <!-- MOBILE NAVIGATION SLIDING DRAWER (PHONE & TABLET) -->
+    <div id="mobileMenuDrawer" class="hidden lg:hidden border-t border-white/10 mt-3 pt-4 pb-3 px-2 flex flex-col gap-3 transition-all duration-300">
+      <!-- MOBILE VISITOR LINKS -->
+      <div id="mobileVisitorNav" class="flex flex-col gap-2 text-sm font-bold text-gray-300">
+        <button onclick="App.scrollToSection('topBestSellersSection'); App.toggleMobileMenu();" class="text-right py-2 px-3 rounded-lg hover:bg-white/5 hover:text-[#08CB00] transition text-[#08CB00] flex items-center gap-2">🔥 الأكثر مبيعاً</button>
+        <button onclick="App.scrollToSection('features'); App.toggleMobileMenu();" class="text-right py-2 px-3 rounded-lg hover:bg-white/5 hover:text-[#08CB00] transition">المميزات</button>
+        <button onclick="App.scrollToSection('curriculum'); App.toggleMobileMenu();" class="text-right py-2 px-3 rounded-lg hover:bg-white/5 hover:text-[#08CB00] transition">المنهج</button>
+        <button onclick="App.scrollToSection('preview'); App.toggleMobileMenu();" class="text-right py-2 px-3 rounded-lg hover:bg-white/5 hover:text-[#08CB00] transition">المقدمة</button>
+        <button onclick="App.scrollToSection('instructor'); App.toggleMobileMenu();" class="text-right py-2 px-3 rounded-lg hover:bg-white/5 hover:text-[#08CB00] transition">المدرّب</button>
+        <button onclick="App.scrollToSection('pricing'); App.toggleMobileMenu();" class="text-right py-2 px-3 rounded-lg hover:bg-white/5 hover:text-[#08CB00] transition">السعر</button>
+        <button onclick="App.scrollToSection('faq'); App.toggleMobileMenu();" class="text-right py-2 px-3 rounded-lg hover:bg-white/5 hover:text-[#08CB00] transition">الأسئلة</button>
+        <button onclick="App.scrollToSection('contact-youssef'); App.toggleMobileMenu();" class="text-right py-2 px-3 rounded-lg hover:bg-white/5 hover:text-[#08CB00] transition text-emerald-400">التواصل</button>
+      </div>
+
+      <!-- MOBILE STUDENT LINKS -->
+      <div id="mobileStudentNav" class="hidden flex flex-col gap-2 text-sm font-bold text-gray-300">
+        <button onclick="App.showPage('home'); App.toggleMobileMenu();" class="text-right py-2 px-3 rounded-lg hover:bg-white/5 hover:text-[#08CB00] transition flex items-center gap-2">🏠 الرئيسية</button>
+        <button onclick="App.showPage('courses'); App.toggleMobileMenu();" class="text-right py-2 px-3 rounded-lg hover:bg-white/5 hover:text-[#08CB00] transition flex items-center gap-2">🎓 الكورسات المتاحة</button>
+        <button onclick="App.showPage('dashboard'); App.toggleMobileMenu();" class="text-right py-2 px-3 rounded-lg hover:bg-white/5 hover:text-[#08CB00] transition flex items-center gap-2">📊 كورساتي المفعلة</button>
+        <button onclick="App.openRedeemModal(); App.toggleMobileMenu();" class="text-right py-2.5 px-4 rounded-xl text-[#08CB00] font-extrabold bg-[#08CB00]/10 border border-[#08CB00]/40 flex items-center gap-2">🔑 تفعيل كود جديد</button>
+        <button id="mobileNavAdminBtn" onclick="App.showPage('admin'); App.toggleMobileMenu();" class="text-right py-2 px-3 rounded-lg text-yellow-400 font-bold hidden">⚡ لوحة الأدمن الشاملة</button>
+      </div>
     </div>
   </header>
 

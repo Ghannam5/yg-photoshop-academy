@@ -189,44 +189,62 @@ const App = {
     }
   },
 
+  toggleMobileMenu() {
+    const drawer = document.getElementById('mobileMenuDrawer');
+    if (drawer) {
+      drawer.classList.toggle('hidden');
+    }
+  },
+
   updateUserNav() {
     const userNavArea = document.getElementById('userNavArea');
     const adminBtn = document.getElementById('navAdminBtn');
+    const mobileAdminBtn = document.getElementById('mobileNavAdminBtn');
     const visitorNav = document.getElementById('visitorNav');
     const studentNav = document.getElementById('studentNav');
+    const mobileVisitorNav = document.getElementById('mobileVisitorNav');
+    const mobileStudentNav = document.getElementById('mobileStudentNav');
 
     if (this.state.currentUser) {
       const user = this.state.currentUser;
       const isAdmin = user.role === 'ADMIN';
 
-      if (visitorNav) visitorNav.style.display = 'none';
-      if (studentNav) {
-        studentNav.style.display = 'flex';
-        studentNav.classList.remove('hidden');
-      }
+      if (visitorNav) visitorNav.classList.add('hidden');
+      if (mobileVisitorNav) mobileVisitorNav.classList.add('hidden');
+
+      if (studentNav) studentNav.classList.remove('hidden');
+      if (mobileStudentNav) mobileStudentNav.classList.remove('hidden');
+
       if (adminBtn) adminBtn.classList.toggle('hidden', !isAdmin);
+      if (mobileAdminBtn) mobileAdminBtn.classList.toggle('hidden', !isAdmin);
 
-      userNavArea.innerHTML = `
-        <div class="flex items-center gap-3">
-          <div class="text-right hidden sm:block">
-            <div class="text-xs font-extrabold text-white">${user.firstName || 'طالب'} ${user.lastName || ''}</div>
-            <div class="text-[10px] text-[#08CB00] font-bold">${isAdmin ? '👑 أدمن المنصة' : '🎓 طالب مشترك'}</div>
+      if (userNavArea) {
+        userNavArea.innerHTML = `
+          <div class="flex items-center gap-2 sm:gap-3">
+            <div class="text-right hidden sm:block">
+              <div class="text-xs font-extrabold text-white">${user.firstName || 'طالب'} ${user.lastName || ''}</div>
+              <div class="text-[10px] text-[#08CB00] font-bold">${isAdmin ? '👑 أدمن' : '🎓 طالب'}</div>
+            </div>
+            <button onclick="App.logout()" class="btn btn-ghost text-xs py-1.5 px-3 sm:py-2 sm:px-4">خروج 🚪</button>
           </div>
-          <button onclick="App.logout()" class="btn btn-ghost text-xs py-2 px-4">خروج 🚪</button>
-        </div>
-      `;
-    } else {
-      if (visitorNav) {
-        visitorNav.style.display = 'flex';
-        visitorNav.classList.remove('hidden');
+        `;
       }
-      if (studentNav) studentNav.style.display = 'none';
-      if (adminBtn) adminBtn.classList.add('hidden');
+    } else {
+      if (visitorNav) visitorNav.classList.remove('hidden');
+      if (mobileVisitorNav) mobileVisitorNav.classList.remove('hidden');
 
-      userNavArea.innerHTML = `
-        <button onclick="App.openAuthModal('login')" class="btn btn-ghost text-xs py-2 px-4">تسجيل الدخول</button>
-        <button onclick="App.openAuthModal('register')" class="btn btn-primary text-xs py-2 px-5">حساب جديد ✨</button>
-      `;
+      if (studentNav) studentNav.classList.add('hidden');
+      if (mobileStudentNav) mobileStudentNav.classList.add('hidden');
+
+      if (adminBtn) adminBtn.classList.add('hidden');
+      if (mobileAdminBtn) mobileAdminBtn.classList.add('hidden');
+
+      if (userNavArea) {
+        userNavArea.innerHTML = `
+          <button onclick="App.openAuthModal('login')" class="btn btn-ghost text-xs py-1.5 px-3 sm:py-2 sm:px-5">تسجيل الدخول</button>
+          <button onclick="App.openAuthModal('register')" class="btn btn-primary text-xs py-1.5 px-3 sm:py-2 sm:px-6">حساب جديد ✨</button>
+        `;
+      }
     }
 
     this.renderCoursesGrid();
@@ -343,7 +361,7 @@ const App = {
 
     if (this.state.isRegisterMode) {
       const firstName = document.getElementById('authFirstName').value.trim();
-      const lastName = document.getElementById('authLastName').value.trim() || '';
+      const lastName = document.getElementById('authLastName').value.trim() || 'المصمم';
       if (!firstName) {
         this.showToast('يرجى إدخال الاسم الأول', 'error');
         return;
@@ -358,22 +376,25 @@ const App = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password, firstName, lastName }),
         });
-        const data = await res.json();
-        if (res.ok && data.data) {
-          if (data.data.accessToken) {
-            this.state.token = data.data.accessToken;
+        const resData = await res.json();
+        const payload = resData.data || resData;
+
+        if (res.ok && payload && (payload.accessToken || payload.user)) {
+          if (payload.accessToken) {
+            this.state.token = payload.accessToken;
             localStorage.setItem('yg_token', this.state.token);
-            this.state.currentUser = data.data.user;
+            this.state.currentUser = payload.user;
             await this.loadMyEnrollments();
             this.updateUserNav();
           }
           this.showToast('تم إنشاء الحساب وتسجيل الدخول بنجاح! 🎉', 'success');
           this.closeModal('authModal');
         } else {
-          const msg = Array.isArray(data.message) ? data.message.join(', ') : data.message;
-          this.showToast(msg || 'فشل إنشاء الحساب (تأكد من صحة البيانات)', 'error');
+          const msg = Array.isArray(resData.message) ? resData.message.join(', ') : (resData.message || (payload && payload.message));
+          this.showToast(msg || 'فشل إنشاء الحساب (تأكد من صحة البريد والبيانات)', 'error');
         }
       } catch (err) {
+        console.error(err);
         this.showToast('خطأ في الاتصال بالسيرفر', 'error');
       }
     } else {
@@ -388,20 +409,24 @@ const App = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
-      if (res.ok && data.data) {
-        this.state.token = data.data.accessToken;
+      const resData = await res.json();
+      const payload = resData.data || resData;
+
+      if (res.ok && payload && payload.accessToken) {
+        this.state.token = payload.accessToken;
         localStorage.setItem('yg_token', this.state.token);
-        this.state.currentUser = data.data.user;
+        this.state.currentUser = payload.user;
         await this.loadMyEnrollments();
         this.updateUserNav();
-        this.showToast(`مرحباً بك مجدداً ${data.data.user.firstName || ''}! 🎉`, 'success');
+        this.showToast(`مرحباً بك مجدداً ${payload.user?.firstName || ''}! 🎉`, 'success');
         this.closeModal('authModal');
       } else {
-        this.showToast(data.message || 'بيانات الدخول غير صحيحة', 'error');
+        const msg = Array.isArray(resData.message) ? resData.message.join(', ') : (resData.message || (payload && payload.message));
+        this.showToast(msg || 'بيانات الدخول غير صحيحة', 'error');
       }
     } catch (err) {
-      this.showToast('خطأ في شبكة الاتصال', 'error');
+      console.error(err);
+      this.showToast('خطأ في شبكة الاتصال بالسيرفر', 'error');
     }
   },
 
