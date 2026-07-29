@@ -46,6 +46,9 @@ async function bootstrapServer() {
 export default async function handler(req: any, res: any) {
   try {
     await bootstrapServer();
+    if (req.url && !req.url.startsWith('/api')) {
+      req.url = '/api' + req.url;
+    }
     server(req, res);
   } catch (err: any) {
     console.error('Serverless Bootstrap Error:', err);
